@@ -1,4 +1,4 @@
 NetworkAnnealing
 ================
 
-Python script for optimizing parameter for network_sequence_simulator by simulated annealing
+Python script for optimizing parameters for network_sequence_simulator by simulated annealing
