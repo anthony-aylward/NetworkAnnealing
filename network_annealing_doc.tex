@@ -1,0 +1,146 @@
+\title{Documentation for \texttt{network{\textunderscore}annealing.py}}
+\date{}
+
+\documentclass[12pt]{scrartcl}
+
+\usepackage[margin=1in]{geometry} 
+\usepackage{amsmath,amsthm,amssymb}
+\usepackage{graphicx}
+\usepackage{courier}
+\usepackage{tikz}
+ 
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\R}{\mathbb{R}}
+
+\begin{document}
+\maketitle
+
+\section{Description}
+\texttt{network{\textunderscore}annealing.py} is a python script that uses simulated annealing to optimize parameter settings for \texttt{network{\textunderscore}sequence{\textunderscore}simulator}. \texttt{network{\textunderscore}annealing.py} searches for a parametrization that causes \texttt{network{\textunderscore}sequence{\textunderscore}simulator} to produce an inferred network that closely matches target values in the following metrics:
+
+\begin{itemize}
+\item Number of nodes 
+\item Number of edges
+\item Mean distance between sequences
+\item Characteristic exponent
+\end{itemize}
+
+\section{Usage}
+Below is an illustration of \texttt{network{\textunderscore}annealing.py}'s usage in the form of a shell script for use on silverback.
+\begin{verbatim}
+#!/bin/bash
+
+/opt/python-3.3.1/bin/python3 ~/NetworkAnnealing/network_annealing.py \
+--sequences SEQUENCES \
+--fasta FASTA \
+--tn93 TN93 \
+--[free]size SIZE \
+--[free]days DAYS \
+--[free]rate RATE \
+--[free]lineages LINEAGES \
+--[free]split SPLIT \
+--[free]random RANDOM \
+--[free]subset SUBSET \
+--[free]bias BIAS \
+--[free]sampling SAMPLING \
+--[free]burst BURST
+
+exit
+\end{verbatim}
+\texttt{network{\textunderscore}annealing.py} takes the same arguments as \texttt{network{\textunderscore}sequence{\textunderscore}simulator}, but it requires that all arguments be specified (there are no default values.) Arguments specified with the prefix 'free' (e.g. \texttt{--freesize}) are considered as part of the search space and allowed to vary during the annealing process, while arguments specified without the prefix or in short form (e.g. \texttt{--size}, \texttt{-n}) are held fixed and do not vary. 
+
+\section{Arguments}
+\begin{description}
+\item[\texttt{SEQUENCES}] Path to FASTA file containing seed sequences for \texttt{network{\textunderscore}sequence{\textunderscore}simulator}
+\item[\texttt{FASTA}] Path to which FASTA file containing sequences sampled from the network should be written
+\item[\texttt{TN93}] Path to which .csv file describing the inferred network should be written
+\item[\texttt{SIZE}] Number of nodes in the network
+\item[\texttt{DAYS}] Mean number of days between transmission events
+\item[\texttt{RATE}] Mean number of substitutions per site per
+\item[\texttt{LINEAGES}] Number of seed lineages
+\item[\texttt{SPLIT}] Rate at which new lineages are initiated
+\item[\texttt{RANDOM}] Rate at which random attachments are made
+\item[\texttt{SUBSET}] Number of nodes in the subset network
+\item[\texttt{BIAS}] Preferential attachment bias
+\item[\texttt{SAMPLING}] Mean sampling delay in days
+\item[\texttt{BURST}] Mean size of transmission event burst
+\end{description}
+
+\section{Details}
+
+\subsection{Summarizing the inferred network}
+Our goal will be to parametrize the network simulation so that it produces an in-silico inferred network that is similar to a clinically inferred network. To measure similarity, we will summarize each inferred network by four metrics:
+\begin{itemize}
+\item $M_1$, Number of nodes
+\item $M_2$, Number of edges
+\item $M_3$, Mean genetic distance between seqences
+\item $M_3$, Characteristic exponent
+\end{itemize}
+The last item bears some explanation. The term ``characteristic exponent" above refers to $\hat{\gamma}$, the maximum-likelihood estimator for the parameter $\gamma$ of a scale-free degree distribution fit to the inferred network. Denoting the metrics of the in-silico inferred network by $M$ and those of the clinically inferred network by $\bar{M}$, we define an objective function by:
+\[f(\Theta) = \sum_{i=1}^4 (\frac{M_i - \bar{M}_i}{\bar{M}_i})^2\]
+Where $\Theta$ represents the parameters of the network simulation that generates $M$. Note that because of stochasticity in the simulation $f$ is a random variable. Our aim will be to find a parametrization $\Theta$ that minimizes $\E f(\Theta)$. 
+
+\subsection{Overview of simulated annealing}
+The method of \textbf{simulated annealing} has four fundamental parts:
+\begin{itemize}
+\item Temperature schedule
+\item Objective function
+\item State generator
+\item Acceptance probability function
+\end{itemize}
+An overview with definitions follows. The \textbf{temperature sechedule} is a decreasing sequence $\{T_i\}_{i=0}^\tau$ of real values. Its importance will be apparent shortly. Let $\Omega$ be the domain of an \textbf{objective function} $f:\Omega \rightarrow \R$, such as the one defined in the previous section. Elements of $\Omega$ are called \textbf{states}, and to initialize the annealing process we first choose an initial state $\Theta \in \Omega$. The \textbf{state generator} is a stochastic function $G:\Omega \rightarrow \Omega$. To advance, we must obtain a new state $\Theta' = G(\Theta)$. 
+
+The crux of the annealing process is the decision either to adopt or reject the new state. We define a temperature-dependent \textbf{acceptance probability function} $P_T:\R^2 \rightarrow [0,1]$ such that $P_T \leq P_{T'}$ when $T \leq T'$. We choose to adopt $\Theta'$ as the new current state with probability $P_T(f(\Theta),(f\Theta'))$. After the decision is made, another new state is generated and the process repeats until a stopping criterion is met or the temperature schedule ends.
+
+Having established the principles of simulated annealing, we can proceed to specify the details for the problem at hand. 
+
+\subsection{Problem-specific formulation}
+We will adopt the objective function defined in the previous section, the remaining components are discussed below.
+
+\paragraph{Temperature schedule}\mbox{}\\
+We choose a simple, linearly decreasing temperature schedule:
+\[T_i = c(\tau-i+1)\]
+Where $c$ is a real constant, $\tau$ a positive integer and $i$ is in $\{1...\tau\}$. 
+
+\paragraph{Acceptance probability}\mbox{}\\
+We also choose a classical acceptance probability function, defined by:
+\[ P_T(f(\Theta),f(\Theta')) = 
+ \left\{ \begin{array}{cc} 
+1 & ,f(\Theta) \geq f(\Theta') \\
+  e^{(f(\Theta) - f(\Theta'))T^{-1}} & ,f(\Theta) < f(\Theta')
+\end{array} \right. \]
+
+\paragraph{State generator}\mbox{}\\
+The nature of the state generator has great influence on the performance of an annealing algorithm and it is unique to every problem, so it requires some development. First let's characterize $\Omega$. Our network simulation takes several parameters, some from $(0,\infty)$, some from $(0,1)$, and some from $\N$. Hence we can describe $\Omega$ by:
+\[\Omega = (0,\infty)^{n_1}(0,1)^{n_2}\N^{n_3}\]
+With $\Omega$ so defined, $G$ will be a function with $n_1+n_2+n_3$  components. For each component $g_i$ of $G$, one of three possibilities should be true:
+\begin{description}
+\item[Case 1:]$g_i:(0,\infty) \rightarrow (0,\infty)$
+\item[Case 2:]$g_i:(0,1)        \rightarrow (0,1)$
+\item[Case 3:]$g_i:\N          \rightarrow \N$
+\end{description}
+Recall that each $g_i(\theta_i)$, where $\theta_i$ is the $i$'th component of $\Theta$, is a random variable. We will now assign some properties to each $g_i(\theta_i)$:
+\begin{enumerate}
+\item $g_i(\theta_i)$ has a variance $\sigma_i^2$ independent of $\theta_i$ that remains fixed throughout the annealing process.
+\item $g_i(\theta_i)$ has a mode at $\theta_i$
+\end{enumerate}
+With these assumptions in hand, assigning a Gamma distribution to the first case and a Beta distribution to the second completes their develompent.
+\begin{description}
+\item[Case 1:]$g_i(\theta_i) \sim \Gamma(\alpha_{\theta_i,\sigma^2_i},\beta_{\theta_i,\sigma^2_i})$
+\item[Case 2:]$g_i(\theta_i) \sim \mathcal{B}e(\alpha_{\theta_i,\sigma^2_i},\beta_{\theta_i,\sigma^2_i})$
+\end{description}
+Discrete distributions are harder to characterize by mode, so we employ a workaround. In the third case, let $\mu_i$ be the mean of a Gamma distribution with variance $\sigma^2_i$ and mode $\theta_i$. Now assign:
+\begin{description}
+\item[Case 3:]\[g_i(\theta_i) \sim \left\{\begin{array}{cc}
+\text{Binomial}(n_{\mu_i,\sigma^2_i},p_{\mu_i,\sigma^2_i}) & ,\mu_i > \sigma^2_i \\
+\text{Poisson}(\mu_i) & ,\mu_i = \sigma^2_i \\
+\text{NegBinomial}(n_{\mu_i,\sigma^2_i},p_{\mu_i,\sigma^2_i}) & ,\mu_i < \sigma^2_i 
+\end{array}\right.\]
+\end{description}
+$G$ is now completely defined and, when paired with $\Sigma=(\sigma^2_1,...,\sigma^2_{n_1+n_2+n_3})$ can be used to generate a new state $G(\Theta)$ from a state $\Theta$.
+
+\section{Value}
+When the annealing process is complete, \texttt{network{\textunderscore}annealing.py} writes a file called \texttt{annealing{\textunderscore}results.txt} that contains the best parameters and objective value found during the search.
+\end{document}
