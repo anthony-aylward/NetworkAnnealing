@@ -5,7 +5,7 @@
 # Parameter optimization for network_sequence_simulator by simulated annealing. 
 
 # This script assumes that the directory ~/HIVClustering/ is a clone of the eponymous git 
-# repository. It outputs its results in the file ~/NetworkAnnealing/annealing_resultst.txt.
+# repository. It outputs its results in the file ~/NetworkAnnealing/annealing_results.txt.
 
 # First import a few dependencies
 
