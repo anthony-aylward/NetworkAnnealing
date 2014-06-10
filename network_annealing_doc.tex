@@ -51,6 +51,19 @@ exit
 \end{verbatim}
 \texttt{network{\textunderscore}annealing.py} takes the same arguments as \texttt{network{\textunderscore}sequence{\textunderscore}simulator}, but it requires that all arguments be specified (there are no default values.) Arguments specified with the prefix 'free' (e.g. \texttt{--freesize}) are considered as part of the search space and allowed to vary during the annealing process, while arguments specified without the prefix or in short form (e.g. \texttt{--size}, \texttt{-n}) are held fixed and do not vary. 
 
+\texttt{network{\textunderscore}annealing.py} assumes that it is found in the directory 
+\begin{quote}
+\begin{verbatim}
+~/NetworkAnnealing/network_annealing.py
+\end{verbatim}
+\end{quote}
+ and that \texttt{network{\textunderscore}sequence{\textunderscore}simulator}  is found in:
+ \begin{quote}
+\begin{verbatim}
+~/HIVClustering/bin/network_sequence_simulator
+\end{verbatim}
+\end{quote}
+
 \section{Arguments}
 \begin{description}
 \item[\texttt{SEQUENCES}] Path to FASTA file containing seed sequences for \texttt{network{\textunderscore}sequence{\textunderscore}simulator}
